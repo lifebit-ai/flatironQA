@@ -117,26 +117,28 @@ process process1 {
     echo true
     publishDir "${params.outdir}", mode: "copy"
 
-    input:
-    // Define your input files e.g. path(input_paths_file)
-
+  input:
+    path input1 from params.input1
+    path input2 from params.input2
+    val market from params.market
+    val tumor from params.tumor
+    val delivery from params.delivery
 
     output:
-    // Define your Output files and variables e.g. tuple val(params.add1), path("*.txt")
-   
+    path 'output.html'
 
     script:
     """
-    # Write your script of commands here
-    echo "[INFO] Running the process!"
-    // ------------------------------------------
-    // e.g. bcftools view \
-    //    -Oz --output ${output.vcf.gz} \
-    //    --regions chr1 \
-    //    --threads ${params.large_cpus} \
-    //    $vcf_paths_file
-    echo "[INFO] Completed process1"
-    // ------------------------------------------
+    Rscript -e "
+    library(rmarkdown);
+    params <- list(
+        input1='${input1}',
+        input2='${input2}',
+        market='${market}',
+        tumor='${tumor}',
+        delivery='${delivery}'
+    );
+    render('CLQA_markdown.Rmd', output_file='output.html', params=params)"
     """
 }
 // TOO HERE
@@ -244,7 +246,7 @@ def comptext() {
     text  = """
     .................................................................................................
     .................................................................................................
-    .......CONGRATULATIONS FOR WRITING & RUNNING YOUR FIRST PIPELINE ON THE LIFEBIT PLATFORM!........
+    .......CONGRATULATIONS, PIPELINE COMPLETE!........
     .................................................................................................
     .................................................................................................
     """.stripIndent()
