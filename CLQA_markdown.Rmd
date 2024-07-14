@@ -1,0 +1,140 @@
+---
+title: "CLQA_markdown"
+author: "Lucia Groizard"
+date: "2024-05-13"
+output: html_document
+params:
+  input1: NULL
+  input2: NULL
+  market: "default_market"
+  tumor: "default_tumor"
+  delivery: "default_delivery"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+---
+```{r warning=FALSE, message=FALSE, echo=FALSE}
+
+### DEFINE PARAMETERS HERE ###
+# Load the input data
+input1 <- read.csv(params$input1)
+input2 <- read.csv(params$input2)
+market <- params$market
+tumor <- params$tumor
+delivery <- params$delivery
+##################
+
+
+## Install packages ##
+library(dplyr)
+library(readr)
+library(glue)
+library(lubridate)
+install.packages("IRdisplay")
+library(IRdisplay)
+library(ggplot2)
+library(stringr)
+library(tidyr)
+
+data_dir <- "~/session_data/mounted-data"
+
+demographics <- read_delim((
+file_path <- paste(data_dir, "/", tolower(market), "_", tolower(tumor), "_", delivery, "/", market, "_", tumor, "_DEMOGRAPHICS.csv", sep = "")), show_col_types = FALSE, delim = "|")
+
+mortality <- read_delim((
+file_path <- paste(data_dir, "/", tolower(market), "_", tolower(tumor), "_", delivery, "/", market, "_", tumor, "_MORTALITY.csv", sep = "")), show_col_types = FALSE, delim = "|")
+
+enhanced_cohort <-
+read_delim((
+file_path <- paste(data_dir, "/", tolower(market), "_", tolower(tumor), "_", delivery, "/", market, "_", tumor, ".csv", sep = "")), show_col_types = FALSE, delim = "|") %>%
+left_join(demographics, by = "patient_id") %>%
+left_join(mortality, by = "patient_id") %>%
+rename(death_date = date_of_death) %>%
+mutate(
+age_at_diagnosis = year(diagnosis_date) - birth_year,
+age_at_diagnosis_grouped = case_when(
+age_at_diagnosis < 18 ~ "<18 years",
+age_at_diagnosis <= 85 ~ "18-85 years",
+age_at_diagnosis > 85 ~ ">85 years",
+TRUE ~ NA_character_
+)
+, .after = patient_id
+) %>%
+mutate(
+diagnosis_to_met_diagnosis = as.integer(met_diagnosis_date - diagnosis_date),
+# diagnosis_to_met_diagnosis_months = diagnosis_to_met_diagnosis/30
+) %>%
+mutate(across(age_at_diagnosis_grouped, ~factor(.x, levels = c("<18 years", "18-85 years", ">85 years"))))
+if (market != "UK") {
+enhanced_cohort <-
+enhanced_cohort %>%
+mutate(
+diagnosis_to_first_treatment = as.integer(first_treatment_date - diagnosis_date)
+)
+}
+
+# EXAMPLE CHECK: Check for duplicate patient_id
+df_dup_patient_id <- enhanced_cohort %>%
+group_by(patient_id) %>%
+count() %>%
+filter(n>1)
+
+if (nrow(df_dup_patient_id) == 0) {
+cat("Check: No duplicate patient IDs found.")
+} else {}
+
+
+date_vars <- c("diagnosis_date", "met_diagnosis_date", "advanced_diagnosis_date",
+"first_treatment_date", "first_treatment_ecog_date", "first_additional_primary_date",
+"first_local_recur_date", "first_distant_recur_date", "death_date")
+
+date_var <- "met_diagnosis_date"
+age_lower = 18
+date_binwidth <- "year"
+data <- enhanced_cohort
+vline_lower <- NULL
+vline_upper <- NULL
+
+date_var_granularity <- glue("{date_var}_granularity")
+
+## EXAMPLE PLOT ##
+
+plot_dist <- enhanced_cohort %>%
+mutate(x_var = floor_date(!!sym(date_var), unit = date_binwidth)) %>%
+group_by(!!sym(date_var_granularity), x_var) %>%
+summarise(n = n(), .groups = "drop") %>%
+ggplot(aes(x = x_var, y = n, fill = !!sym(date_var_granularity))) +
+geom_bar(stat = "identity", position = "stack", just = 0) +
+scale_x_date(date_labels = "%b %y") +
+labs(
+x = glue("{date_var} (binned by {date_binwidth})"),
+subtitle = "Date distribution"
+) +
+theme_bw() +
+theme(legend.position = "bottom")
+
+if (!is.null(vline_lower)) {
+rounded_date <- round_date(as.Date(vline_lower), unit = date_binwidth)
+plot_dist <- plot_dist +
+geom_vline(xintercept = as.Date(vline_lower), linetype = "dashed")
+}
+if (!is.null(vline_upper)) {
+rounded_date <- round_date(as.Date(vline_upper), unit = date_binwidth)
+plot_dist <- plot_dist +
+geom_vline(xintercept = as.Date(vline_upper), linetype = "dashed")
+}
+suppressMessages(
+ggsave(
+file.path(data_dir, glue("plot_check_{date_var}.png")),
+plot = plot_dist
+)
+)
+display_png(
+file = file.path(data_dir, glue("plot_check_{date_var}.png")),
+width = 500, height = 500
+)
+
+
+plot_dist
+```
