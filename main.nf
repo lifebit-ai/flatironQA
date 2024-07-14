@@ -110,6 +110,12 @@ process OBTAIN_PIPELINE_METADATA {
     '''
 }
 
+params.input1 = file(params.input1)
+params.input2 = file(params.input2)
+params.market = ''
+params.tumor = ''
+params.delivery = ''
+
 // EDIT HERE
 process process1 {
     label "process_large"
