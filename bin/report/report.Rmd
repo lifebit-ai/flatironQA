@@ -10,8 +10,15 @@ output:
     highlight: tango           # specifies the syntax highlighting style
     css: 'style.css'
 params:
-  res_table: x
-title: "`r paste0('Report title' , '') `"
+  demographics:
+mortality:
+diagnosis:
+date_var:
+group_var:
+market:
+delivery:
+tumor:
+title: "`r paste0('QA Report' , '') `"
 author: ""
 date: ""
 ---
@@ -23,24 +30,116 @@ date: ""
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE)
 ```
 
-```{r echo = FALSE}
-suppressPackageStartupMessages({
-    library(reactable)
-    library(reactR)
-    library(reactablefmtr)
-    library(htmltools)
-    library(dplyr)
-})
-source("reactable_funcs.R")
-```
+```{r warning=FALSE, message=FALSE, echo=FALSE}
+## Install packages ##
+library(dplyr)
+library(readr)
+library(glue)
+library(lubridate)
+library(IRdisplay)
+library(ggplot2)
+library(stringr)
+library(tidyr)
 
-# About
 
-# Results Table
+### DEFINE PARAMETERS HERE ###
+# Load the input data
+market <- params$market
+tumor <- params$tumor
+delivery <- params$delivery
+date_var <- params$date_var
+group_var <- params$group_var
 
-```{r res_table}
-# Read the table in as a dataframe
-data <- read.table(params$res_table, header = T, sep = ",")
-# Generate reactable with data from reactable_funcs.R
-generateReactable(data)
+demographics <- read_delim(params$demographics, show_col_types = FALSE, delim = "|")
+
+mortality <- read_delim(params$mortality, show_col_types = FALSE, delim = "|")
+
+
+##################
+
+print(paste("Market:", market))
+print(paste("Tumor:", tumor))
+print(paste("Delivery:", delivery))
+print(paste("Date_variable:", date_var))
+print(paste("Group_variable:", group_var))
+
+enhanced_cohort <- read_delim(params$diagnosis, show_col_types = FALSE, delim = "|") %>%
+left_join(demographics, by = "patientid") %>%
+left_join(mortality, by = "patientid") %>%
+mutate(
+age_at_diagnosis = year(diagnosisdate) - birthyear,
+age_at_diagnosis_grouped = case_when(
+age_at_diagnosis < 18 ~ "<18 years",
+age_at_diagnosis <= 85 ~ "18-85 years",
+age_at_diagnosis > 85 ~ ">85 years",
+TRUE ~ NA_character_
+)
+, .after = patientid
+) %>%
+mutate(
+diagnosis_to_met_diagnosis = as.integer(metdiagnosisdate - diagnosisdate),
+# diagnosis_to_met_diagnosis_months = diagnosis_to_met_diagnosis/30
+) %>%
+mutate(across(age_at_diagnosis_grouped, ~factor(.x, levels = c("<18 years", "18-85 years", ">85 years"))))
+#if (market != "UK") {
+#enhanced_cohort <-
+#enhanced_cohort %>%
+#mutate(
+#diagnosis_to_first_treatment = as.integer(first_treatment_date - diagnosisdate)
+#)
+#}
+
+# EXAMPLE CHECK: Check for duplicate patient_id
+df_dup_patient_id <- enhanced_cohort %>%
+group_by(patientid) %>%
+count() %>%
+filter(n>1)
+
+if (nrow(df_dup_patient_id) == 0) {
+cat("Check: No duplicate patient IDs found.")
+} else {}
+
+
+date_vars <- c("diagnosisdate", "metdiagnosisdate", "advanceddiagnosisdate","dateofdeath")
+
+age_lower = 18
+date_binwidth <- "year"
+data <- enhanced_cohort
+vline_lower <- NULL
+vline_upper <- NULL
+
+#date_var_granularity <- glue("{date_var}_granularity")
+
+## EXAMPLE PLOT ##
+
+plot_dist <- enhanced_cohort %>%
+mutate(x_var = floor_date(!!sym(date_var), unit = date_binwidth)) %>%
+group_by(!!sym(group_var), x_var) %>%
+summarise(n = n(), .groups = "drop") %>%
+ggplot(aes(x = x_var, y = n, fill = !!sym(group_var))) +
+geom_bar(stat = "identity", position = "stack", just = 0) +
+scale_x_date(date_labels = "%b %y") +
+labs(
+x = glue("{date_var} (binned by {date_binwidth})"),
+subtitle = "Date distribution"
+) +
+theme_bw() +
+theme(legend.position = "bottom")
+
+if (!is.null(vline_lower)) {
+rounded_date <- round_date(as.Date(vline_lower), unit = date_binwidth)
+plot_dist <- plot_dist +
+geom_vline(xintercept = as.Date(vline_lower), linetype = "dashed")
+}
+if (!is.null(vline_upper)) {
+rounded_date <- round_date(as.Date(vline_upper), unit = date_binwidth)
+plot_dist <- plot_dist +
+geom_vline(xintercept = as.Date(vline_upper), linetype = "dashed")
+}
+suppressMessages(
+ggsave(glue("plot_check_{date_var}.png"),
+plot = plot_dist
+)
+)
+plot_dist
 ```
