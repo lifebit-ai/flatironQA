@@ -86,4 +86,7 @@ process report {
         """
     }
 
+workflow {
+    report( demographics_channel,mortality_channel,diagnosis_channel,date_var_channel,group_var_channel,market_channel,tumor_channel,delivery_channel)
+}
 
