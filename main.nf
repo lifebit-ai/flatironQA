@@ -37,6 +37,37 @@ params.outdir = 'results'
 params.date_var = 'metdiagnosisdate'
 params.group_var = 'ethnicity'
 
+process report {
+container 'hsyed91/rpackages:latest'
+        label "process_medium"
+        label "report"
+        publishDir "${params.outdir}/MultiQC", mode: "copy"
+
+        input:
+        file(report_dir) from ch_report_dir
+ file(demographics) from demographics_channel
+ file(mortality) from mortality_channel
+ file(diagnosis) from diagnosis_channel
+    val date_var
+    val group_var
+    val market
+    val tumor
+    val delivery 
+
+
+        output:
+        file "multiqc_report.html"
+
+        script:
+        """
+docker run -v $PWD:/data hsyed91/rpackages:latest Rscript -e "library(rmarkdown); \
+params <- list(demographics='/data/${demographics}', mortality='/data/${mortality}', diagnosis='/data/${diagnosis}', date_var='${date_var}', group_var='${group_var}', market='${market}', tumor='${tumor}', delivery='${delivery}'); \
+rmarkdown::render('/app/CLQA_markdown.Rmd', output_file='/data/output.html', params=params)"
+
+        """
+    }
+
+workflow {
 ch_report_dir = Channel.value(file("${project_dir}/bin/report"))
 demographics_channel = Channel.fromPath(params.demographics)
     mortality_channel = Channel.fromPath(params.mortality)
@@ -47,46 +78,6 @@ demographics_channel = Channel.fromPath(params.demographics)
     tumor_channel = Channel.value(params.tumor)
     delivery_channel = Channel.value(params.delivery)
 
-
-
-process report {
-        label "process_medium"
-        label "report"
-        publishDir "${params.outdir}/MultiQC", mode: "copy"
-
-        input:
-        file(report_dir) from ch_report_dir
- file(demographics) from demographics_channel
- file(mortality) from mortality_channel
- file(diagnosis) from diagnosis_channel
-    val date_var from date_var_channel
-    val group_var from group_var_channel
-    val market from market_channel
-    val tumor from tumor_channel
-    val delivery from delivery_channel
-
-
-        output:
-        file "multiqc_report.html"
-
-        script:
-        """
-        report.sh \
-            "${report_dir}" \
-            "${params.outdir}" \
-            "${demographics}" \
-"${mortality}" \
-"${diagnosis}" \
-"${date_var}" \
-"${group_var}" \
-"${market}" \
-"${delivery}" \
-"${tumor}" \
-
-        """
-    }
-
-workflow {
     report( demographics_channel,mortality_channel,diagnosis_channel,date_var_channel,group_var_channel,market_channel,tumor_channel,delivery_channel)
 }
 
