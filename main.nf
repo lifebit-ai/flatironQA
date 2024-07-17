@@ -60,7 +60,7 @@ container 'hsyed91/rpackages:latest'
 
         script:
         """
-docker run -v $PWD:/data hsyed91/rpackages:latest Rscript -e "library(rmarkdown); \
+Rscript -e "library(rmarkdown); \
 params <- list(demographics='/data/${demographics}', mortality='/data/${mortality}', diagnosis='/data/${diagnosis}', date_var='${date_var}', group_var='${group_var}', market='${market}', tumor='${tumor}', delivery='${delivery}'); \
 rmarkdown::render('/app/CLQA_markdown.Rmd', output_file='/data/output.html', params=params)"
 
