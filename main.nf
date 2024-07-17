@@ -44,7 +44,6 @@ container 'hsyed91/rpackages:latest'
         publishDir "${params.outdir}/results", mode: "copy"
 
         input:
-        file(report_dir) from ch_report_dir
  file(demographics) from demographics_channel
  file(mortality) from mortality_channel
  file(diagnosis) from diagnosis_channel
@@ -68,7 +67,6 @@ rmarkdown::render('/app/CLQA_markdown.Rmd', output_file='/data/output.html', par
     }
 
 workflow {
-ch_report_dir = Channel.value(file("${project_dir}/bin/report"))
 demographics_channel = Channel.fromPath(params.demographics)
     mortality_channel = Channel.fromPath(params.mortality)
    diagnosis_channel = Channel.fromPath(params.diagnosis)
