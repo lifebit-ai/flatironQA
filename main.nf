@@ -78,6 +78,6 @@ demographics_channel = Channel.fromPath(params.demographics)
     tumor_channel = Channel.value(params.tumor)
     delivery_channel = Channel.value(params.delivery)
 
-    report( demographics_channel,mortality_channel,diagnosis_channel,date_var_channel,group_var_channel,market_channel,tumor_channel,delivery_channel)
+    report(demographics_channel,mortality_channel,diagnosis_channel,date_var_channel,group_var_channel,market_channel,tumor_channel,delivery_channel)
 }
 
