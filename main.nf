@@ -33,8 +33,12 @@ input:
 
     script:
    """
+  cp ${demographics} /data/demographics.csv
+    cp ${mortality} /data/mortality.csv
+    cp ${diagnosis} /data/enhanced_diagnosis.csv
+
    Rscript -e "library(rmarkdown); \
-        params <- list(demographics='${demographics}', mortality='${mortality}', diagnosis='${diagnosis}', date_var='${date_var}', group_var='${group_var}', market='${market}', tumor='${tumor}', delivery='${delivery}'); \
+        params <- list(demographics='/data/${demographics}', mortality='/data/${mortality}', diagnosis='/data/${diagnosis}', date_var='${date_var}', group_var='${group_var}', market='${market}', tumor='${tumor}', delivery='${delivery}'); \
         rmarkdown::render('/app/CLQA_markdown.Rmd', output_file='/data/output.html', params=params, output_dir='.')"
     """
 }
