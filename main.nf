@@ -41,7 +41,7 @@ process report {
 container 'hsyed91/rpackages:latest'
         label "process_medium"
         label "report"
-        publishDir "${params.outdir}/MultiQC", mode: "copy"
+        publishDir "${params.outdir}/results", mode: "copy"
 
         input:
         file(report_dir) from ch_report_dir
@@ -56,7 +56,7 @@ container 'hsyed91/rpackages:latest'
 
 
         output:
-        file "multiqc_report.html"
+        file "output.html"
 
         script:
         """
