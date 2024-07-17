@@ -33,7 +33,7 @@ input:
 
     script:
    """
-  cp ${demographics} /data/demographics.csv
+    cp ${demographics} /data/demographics.csv
     cp ${mortality} /data/mortality.csv
     cp ${diagnosis} /data/enhanced_diagnosis.csv
 
